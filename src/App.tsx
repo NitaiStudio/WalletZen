@@ -62,10 +62,12 @@ import { AuthProvider } from './contexts/AuthContext';
 import { AppProvider } from './contexts/AppContext';
 
 export default function App() {
+  const basename = window.location.hostname.includes('github.io') ? '/WalletZen' : '';
+  
   return (
     <AuthProvider>
       <AppProvider>
-        <Router>
+        <Router basename={basename}>
         <div className="min-h-screen bg-background relative overflow-hidden">
           {/* Animated Background Glows */}
           <div className="absolute -top-[20%] -left-[10%] w-[60%] h-[60%] glow-overlay opacity-20 pointer-events-none" />
