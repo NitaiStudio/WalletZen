@@ -32,7 +32,7 @@ import { Sparkles, CreditCard, ChevronRight } from 'lucide-react';
 
 export default function Dashboard() {
   const { currencySymbol } = useApp();
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const [aiInsights, setAiInsights] = useState<any[]>([]);
   const [isInsightLoading, setIsInsightLoading] = useState(false);
   
@@ -72,7 +72,7 @@ export default function Dashboard() {
 
   const income = allTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
   const expense = allTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
-  const totalBalance = income - expense + 24560; // Mock initial balance + real txs
+  const totalBalance = income - expense + (userProfile?.initialBalance || 0);
 
   return (
     <MainLayout>

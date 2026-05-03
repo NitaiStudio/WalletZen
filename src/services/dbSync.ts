@@ -2,6 +2,7 @@ import {
   collection, 
   doc, 
   setDoc, 
+  getDoc,
   getDocs, 
   query, 
   serverTimestamp,
@@ -10,6 +11,30 @@ import {
 } from 'firebase/firestore';
 import { db as dexieDb } from '@/database/db';
 import { db as firestoreDb, auth, OperationType, handleFirestoreError } from '@/lib/firebase';
+
+export async function syncUserProfile() {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  try {
+    const userRef = doc(firestoreDb, 'users', user.uid);
+    const docSnap = await getDoc(userRef);
+
+    if (!docSnap.exists()) {
+      await setDoc(userRef, {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        initialBalance: 0,
+        monthlySalary: 0,
+        createdAt: serverTimestamp(),
+      });
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}`);
+  }
+}
 
 export async function syncTransactions() {
   const userId = auth.currentUser?.uid;
@@ -91,6 +116,7 @@ export async function syncGoals() {
 }
 
 export async function syncAll() {
+  await syncUserProfile();
   await syncTransactions();
   await syncBudgets();
   await syncGoals();

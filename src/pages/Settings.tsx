@@ -1,48 +1,27 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth, db as firestore } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
 import { motion } from 'motion/react';
 import MainLayout from '@/layouts/MainLayout';
 import GlassCard from '@/components/ui/GlassCard';
-import { User, Bell, Shield, Wallet, Moon, ChevronRight, LogOut, Heart, Smartphone } from 'lucide-react';
+import { User, Bell, Shield, Wallet, Moon, ChevronRight, LogOut, Heart, Smartphone, TrendingUp } from 'lucide-react';
 import { cn } from '@/utils/cn';
-
-const settingsGroups = [
-  {
-    title: 'Account',
-    items: [
-      { icon: User, label: 'Profile Information', value: 'Felix Nitai' },
-      { icon: Wallet, label: 'Payment Methods', value: '3 Cards' },
-      { icon: Shield, label: 'Security & Privacy', value: 'High' },
-    ]
-  },
-  {
-    title: 'Preferences',
-    items: [
-      { icon: Bell, label: 'Notifications', value: 'Enabled', hasToggle: true },
-      { icon: Moon, label: 'Dark Mode', value: 'System', hasToggle: true },
-      { icon: Smartphone, label: 'Fingerprint Lock', value: 'Disabled', hasToggle: true },
-    ]
-  },
-  {
-    title: 'Support',
-    items: [
-      { icon: Heart, label: 'About WalletZen', value: 'v1.0.0' },
-    ]
-  }
-];
+import { doc, updateDoc } from 'firebase/firestore';
 
 export default function Settings() {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const navigate = useNavigate();
   const { 
-    currency, setCurrency, 
+    currency, setCurrency, currencySymbol,
     theme, setTheme, 
     notificationsEnabled, setNotificationsEnabled 
   } = useApp();
+
+  const [isEditingField, setIsEditingField] = useState<string | null>(null);
+  const [tempValue, setTempValue] = useState<string>('');
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -55,10 +34,21 @@ export default function Settings() {
     if (label === 'Fingerprint Lock') alert('Biometric Auth requires a secure domain and hardware support.');
   };
 
-  const renderValue = (item: any) => {
-    if (item.label === 'Currency') return currency;
-    if (item.label === 'Dark Mode') return theme === 'dark' ? 'On' : 'Off';
-    return item.value;
+  const handleUpdateFinancial = async (field: string) => {
+    if (!user) return;
+    const value = parseFloat(tempValue);
+    if (isNaN(value)) return;
+
+    try {
+      const userRef = doc(firestore, 'users', user.uid);
+      await updateDoc(userRef, {
+        [field]: value
+      });
+      setIsEditingField(null);
+    } catch (e) {
+      console.error('Update failed:', e);
+      alert('Failed to update. Check your connection.');
+    }
   };
 
   const settingsGroupsFormatted = [
@@ -77,6 +67,25 @@ export default function Settings() {
         { icon: Moon, label: 'Dark Mode', value: theme === 'dark' ? 'On' : 'Off', hasToggle: true },
         { icon: Smartphone, label: 'Fingerprint Lock', value: 'Disabled', hasToggle: true },
         { icon: Wallet, label: 'Currency', value: currency, hasChoice: true },
+      ]
+    },
+    {
+      title: 'Financial Settings',
+      items: [
+        { 
+          icon: Wallet, 
+          label: 'Initial Balance', 
+          value: `${currencySymbol}${userProfile?.initialBalance || 0}`, 
+          isEditable: true, 
+          field: 'initialBalance' 
+        },
+        { 
+          icon: TrendingUp, 
+          label: 'Monthly Salary', 
+          value: `${currencySymbol}${userProfile?.monthlySalary || 0}`, 
+          isEditable: true, 
+          field: 'monthlySalary' 
+        },
       ]
     },
     {
@@ -112,7 +121,7 @@ export default function Settings() {
             <div key={group.title} className="space-y-3">
               <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-4">{group.title}</p>
               <GlassCard className="p-2">
-                {group.items.map((item, i) => (
+                {group.items.map((item: any, i) => (
                   <div
                     key={item.label}
                     className={cn(
@@ -128,7 +137,25 @@ export default function Settings() {
                     </div>
                     
                     <div className="flex items-center gap-2">
-                      {item.hasToggle ? (
+                      {isEditingField === item.field ? (
+                        <div className="flex items-center gap-2">
+                          <input 
+                            type="number"
+                            autoFocus
+                            value={tempValue}
+                            onChange={(e) => setTempValue(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleUpdateFinancial(item.field)}
+                            className="w-24 bg-white/10 rounded-lg px-2 py-1 text-sm text-white outline-none focus:ring-1 focus:ring-primary"
+                            placeholder="Amount"
+                          />
+                          <button 
+                            onClick={() => handleUpdateFinancial(item.field)}
+                            className="bg-primary px-3 py-1 rounded-lg text-[10px] font-black uppercase"
+                          >
+                            Save
+                          </button>
+                        </div>
+                      ) : item.hasToggle ? (
                          <button 
                           onClick={() => handleToggle(item.label)}
                           className={cn(
@@ -151,7 +178,17 @@ export default function Settings() {
                           <option value="BDT">BDT (৳)</option>
                         </select>
                       ) : (
-                        <button onClick={() => alert(`${item.label} details pending.`)} className="flex items-center gap-2">
+                        <button 
+                          onClick={() => {
+                            if (item.isEditable) {
+                              setIsEditingField(item.field);
+                              setTempValue((userProfile as any)?.[item.field]?.toString() || '0');
+                            } else {
+                              alert(`${item.label} details pending.`);
+                            }
+                          }} 
+                          className="flex items-center gap-2"
+                        >
                           <span className="text-xs text-secondary font-bold uppercase tracking-tighter">{item.value}</span>
                           <ChevronRight className="w-4 h-4 text-white/20" />
                         </button>
