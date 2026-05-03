@@ -62,7 +62,8 @@ import { AuthProvider } from './contexts/AuthContext';
 import { AppProvider } from './contexts/AppContext';
 
 export default function App() {
-  const basename = window.location.hostname.includes('github.io') ? '/WalletZen' : '';
+  // Use import.meta.env.BASE_URL which is set by Vite's "base" config
+  const basename = import.meta.env.BASE_URL;
   
   return (
     <AuthProvider>
