@@ -50,7 +50,48 @@ export async function syncTransactions() {
 }
 
 // Similarly for Budgets and Goals...
+export async function syncBudgets() {
+  const userId = auth.currentUser?.uid;
+  if (!userId) return;
+
+  try {
+    const unsynced = await dexieDb.budgets.where('synced' as any).equals(false as any).toArray();
+    for (const b of unsynced) {
+      const ref = doc(firestoreDb, `users/${userId}/budgets`, b.id?.toString() || '');
+      await setDoc(ref, {
+        ...b,
+        userId,
+        createdAt: serverTimestamp(),
+      });
+      await dexieDb.budgets.update(b.id!, { synced: true } as any);
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `users/${userId}/budgets`);
+  }
+}
+
+export async function syncGoals() {
+  const userId = auth.currentUser?.uid;
+  if (!userId) return;
+
+  try {
+    const unsynced = await dexieDb.goals.where('synced' as any).equals(false as any).toArray();
+    for (const g of unsynced) {
+      const ref = doc(firestoreDb, `users/${userId}/goals`, g.id?.toString() || '');
+      await setDoc(ref, {
+        ...g,
+        userId,
+        createdAt: serverTimestamp(),
+      });
+      await dexieDb.goals.update(g.id!, { synced: true } as any);
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `users/${userId}/goals`);
+  }
+}
+
 export async function syncAll() {
   await syncTransactions();
-  // ... other syncs
+  await syncBudgets();
+  await syncGoals();
 }

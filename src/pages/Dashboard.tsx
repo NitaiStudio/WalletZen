@@ -36,9 +36,27 @@ export default function Dashboard() {
   const [aiInsights, setAiInsights] = useState<any[]>([]);
   const [isInsightLoading, setIsInsightLoading] = useState(false);
   
-  const recentTransactions = useLiveQuery(
-    () => db.transactions.orderBy('date').reverse().limit(5).toArray()
+  const allTransactions = useLiveQuery(
+    () => db.transactions.toArray()
   ) || [];
+
+  const recentTransactions = [...allTransactions]
+    .sort((a, b) => b.date - a.date)
+    .slice(0, 5);
+
+  useEffect(() => {
+    const triggerSync = async () => {
+      if (user) {
+        try {
+          const { syncAll } = await import('@/services/dbSync');
+          await syncAll();
+        } catch (err) {
+          console.error('Sync failed:', err);
+        }
+      }
+    };
+    triggerSync();
+  }, [user]);
 
   useEffect(() => {
     if (recentTransactions.length > 0) {
@@ -52,8 +70,8 @@ export default function Dashboard() {
     }
   }, [recentTransactions.length]);
 
-  const income = recentTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
-  const expense = recentTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
+  const income = allTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
+  const expense = allTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
   const totalBalance = income - expense + 24560; // Mock initial balance + real txs
 
   return (

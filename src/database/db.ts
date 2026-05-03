@@ -16,6 +16,7 @@ export interface Budget {
   limit: number;
   spent: number;
   month: string;
+  synced: boolean;
 }
 
 export interface Goal {
@@ -25,6 +26,7 @@ export interface Goal {
   currentAmount: number;
   deadline: number;
   color: string;
+  synced: boolean;
 }
 
 export class WalletZenDB extends Dexie {
@@ -36,8 +38,8 @@ export class WalletZenDB extends Dexie {
     super('WalletZenDB');
     this.version(1).stores({
       transactions: '++id, type, category, date, synced',
-      budgets: '++id, category, month',
-      goals: '++id, title, deadline'
+      budgets: '++id, category, month, synced',
+      goals: '++id, title, deadline, synced'
     });
   }
 }

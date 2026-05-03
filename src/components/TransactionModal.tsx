@@ -33,12 +33,12 @@ export default function TransactionModal({ isOpen, onClose, transaction }: Trans
   }, [transaction, isOpen]);
 
   const handleSubmit = async () => {
-    if (!amount || !description) return;
+    if (!amount) return;
     setIsSaving(true);
     try {
       const data = {
         amount: parseFloat(amount),
-        description,
+        description: description.trim() || 'Transaction',
         type,
         category: transaction?.category || 'General',
         date: transaction?.date || Date.now(),
@@ -51,10 +51,12 @@ export default function TransactionModal({ isOpen, onClose, transaction }: Trans
         await db.transactions.add(data);
       }
       
-      await syncTransactions();
-      onClose();
+      onClose(); // Close modal immediately after local success for better UX
+      
+      // Fire and forget sync - it will handle its own errors
+      syncTransactions().catch(err => console.error('Background sync failed:', err));
     } catch (e) {
-      console.error(e);
+      console.error('Local save failed:', e);
     } finally {
       setIsSaving(false);
     }

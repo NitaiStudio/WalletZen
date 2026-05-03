@@ -25,6 +25,15 @@ export default function Login() {
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
+      
+      // Sync data after login
+      try {
+        const { syncAll } = await import('@/services/dbSync');
+        await syncAll();
+      } catch (err) {
+        console.error('Initial sync failed:', err);
+      }
+      
       navigate('/dashboard');
     } catch (error: any) {
       // Ignore if user closed the popup
