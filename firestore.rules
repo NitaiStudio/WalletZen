@@ -1,0 +1,105 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Phase 3: Primitive Definition
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Schema Validations
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'createdAt']) && 
+             data.keys().size() == 5 && // uid, email, displayName, photoURL, createdAt
+             data.uid == request.auth.uid &&
+             data.email is string &&
+             data.createdAt == request.time;
+    }
+
+    function isValidTransaction(data) {
+      return data.keys().hasAll(['userId', 'type', 'amount', 'category', 'date', 'createdAt']) &&
+             data.keys().size() <= 7 &&
+             data.userId == request.auth.uid &&
+             data.type in ['income', 'expense'] &&
+             data.amount is number && data.amount >= 0 &&
+             data.category is string && data.category.size() <= 50 &&
+             data.date is number &&
+             data.createdAt == request.time;
+    }
+
+    function isValidBudget(data) {
+      return data.keys().hasAll(['userId', 'category', 'limit', 'month', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.limit is number && data.limit >= 0 &&
+             data.month is string &&
+             data.createdAt == request.time;
+    }
+
+    function isValidGoal(data) {
+      return data.keys().hasAll(['userId', 'title', 'targetAmount', 'currentAmount', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.targetAmount is number &&
+             data.currentAmount is number &&
+             data.createdAt == request.time;
+    }
+
+    // 1. The Master Gate: All user data is scoped under /users/{userId}
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && 
+                      isValidUser(incoming()) && 
+                      incoming().uid == existing().uid; // uid immutable
+
+      // Transactions
+      match /transactions/{transactionId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId) && isValidId(transactionId);
+        allow create: if isOwner(userId) && isValidId(transactionId) && isValidTransaction(incoming());
+        // Transactions are generally immutable for audit, but let's allow corrections for MVP
+        allow update: if isOwner(userId) && isValidId(transactionId) && isValidTransaction(incoming()) && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['description', 'category', 'amount'])
+        );
+        allow delete: if isOwner(userId) && isValidId(transactionId);
+      }
+
+      // Budgets
+      match /budgets/{budgetId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId) && isValidId(budgetId);
+        allow create: if isOwner(userId) && isValidId(budgetId) && isValidBudget(incoming());
+        allow update: if isOwner(userId) && isValidId(budgetId) && isValidBudget(incoming());
+        allow delete: if isOwner(userId) && isValidId(budgetId);
+      }
+
+      // Goals
+      match /goals/{goalId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId) && isValidId(goalId);
+        allow create: if isOwner(userId) && isValidId(goalId) && isValidGoal(incoming());
+        allow update: if isOwner(userId) && isValidId(goalId) && isValidGoal(incoming());
+        allow delete: if isOwner(userId) && isValidId(goalId);
+      }
+    }
+  }
+}

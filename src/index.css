@@ -1,0 +1,82 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  
+  --color-primary: #7C3AED;
+  --color-secondary: #06B6D4;
+  --color-accent: #22C55E;
+  --color-background: #F8FAFC;
+  --color-card: #FFFFFF;
+  --color-text: #0F172A;
+  --color-glass: rgba(255, 255, 255, 0.7);
+  
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+  --radius-3xl: 2.5rem;
+}
+
+.dark {
+  --color-background: #0F172A;
+  --color-card: #1E293B;
+  --color-text: #F8FAFC;
+  --color-glass: rgba(255, 255, 255, 0.08);
+}
+
+@layer base {
+  body {
+    @apply bg-background text-text font-sans antialiased overflow-x-hidden transition-colors duration-300;
+  }
+  
+  * {
+    @apply transition-colors duration-200 outline-none;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-glass shadow-xl;
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+  
+  .dark .glass {
+    @apply border-white/5 shadow-2xl;
+  }
+  
+  .glass-dark {
+    @apply bg-black/20 backdrop-blur-2xl border border-white/5;
+  }
+  
+  .flutter-shadow {
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+  }
+  
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-white/10 rounded-full hover:bg-white/20;
+}
+
+/* Animations */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.5; filter: blur(50px); }
+  50% { opacity: 0.8; filter: blur(70px); }
+}
+
+.glow-overlay {
+  background: radial-gradient(circle at center, var(--color-primary), transparent 70%);
+  animation: pulse-glow 8s infinite ease-in-out;
+}

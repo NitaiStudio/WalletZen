@@ -1,0 +1,6 @@
+{
+  "name": "WalletZen",
+  "description": "A premium Flutter-inspired fintech PWA for smart finance tracking with glassmorphism UI and offline support.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["AI_INSIGHTS", "OFFLINE_SUPPORT", "REALTIME_DASHBOARD"]
+}
