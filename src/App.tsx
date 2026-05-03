@@ -63,7 +63,7 @@ import { AppProvider } from './contexts/AppContext';
 
 export default function App() {
   // Use import.meta.env.BASE_URL which is set by Vite's "base" config
-  const basename = import.meta.env.BASE_URL;
+  const basename = import.meta.env.BASE_URL.replace(/\/$/, '');
   
   return (
     <AuthProvider>
