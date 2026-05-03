@@ -1,11 +1,22 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
-import firebaseConfig from '../../firebase-applet-config.json';
+import localFirebaseConfig from '../../firebase-applet-config.json';
+
+// Use environment variables if available (for GitHub Pages), otherwise fall back to local config
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || localFirebaseConfig.apiKey,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || localFirebaseConfig.authDomain,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || localFirebaseConfig.projectId,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || localFirebaseConfig.storageBucket,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || localFirebaseConfig.messagingSenderId,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || localFirebaseConfig.appId,
+};
 
 const app = initializeApp(firebaseConfig);
-// @ts-ignore - firebaseConfig being a JSON might not have strictly typed firestoreDatabaseId in some environments
-export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
+const databaseId = import.meta.env.VITE_FIREBASE_DATABASE_ID || (localFirebaseConfig as any).firestoreDatabaseId;
+
+export const db = getFirestore(app, databaseId);
 export const auth = getAuth();
 
 export enum OperationType {
