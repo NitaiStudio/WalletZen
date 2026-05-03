@@ -26,7 +26,11 @@ export default function Login() {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
       navigate('/dashboard');
-    } catch (error) {
+    } catch (error: any) {
+      // Ignore if user closed the popup
+      if (error.code === 'auth/popup-closed-by-user') {
+        return;
+      }
       console.error(error);
     } finally {
       setIsLoading(false);

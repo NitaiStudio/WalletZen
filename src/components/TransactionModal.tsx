@@ -7,30 +7,50 @@ import { cn } from '@/utils/cn';
 interface TransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
+  transaction?: any; // Optional transaction for editing
 }
 
 import { db } from '@/database/db';
 import { syncTransactions } from '@/services/dbSync';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
-export default function TransactionModal({ isOpen, onClose }: TransactionModalProps) {
+export default function TransactionModal({ isOpen, onClose, transaction }: TransactionModalProps) {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [isSaving, setIsSaving] = useState(false);
 
+  useEffect(() => {
+    if (transaction) {
+      setAmount(Math.abs(transaction.amount).toString());
+      setDescription(transaction.description);
+      setType(transaction.type);
+    } else {
+      setAmount('');
+      setDescription('');
+      setType('expense');
+    }
+  }, [transaction, isOpen]);
+
   const handleSubmit = async () => {
     if (!amount || !description) return;
     setIsSaving(true);
     try {
-      await db.transactions.add({
+      const data = {
         amount: parseFloat(amount),
         description,
         type,
-        category: 'General',
-        date: Date.now(),
+        category: transaction?.category || 'General',
+        date: transaction?.date || Date.now(),
         synced: false
-      });
+      };
+
+      if (transaction?.id) {
+        await db.transactions.update(transaction.id, data);
+      } else {
+        await db.transactions.add(data);
+      }
+      
       await syncTransactions();
       onClose();
     } catch (e) {
@@ -65,7 +85,9 @@ export default function TransactionModal({ isOpen, onClose }: TransactionModalPr
               <div className="w-12 h-1.5 bg-white/10 rounded-full mx-auto mb-2" />
               
               <div className="flex items-center justify-between">
-                <h3 className="text-2xl font-bold">New Transaction</h3>
+                <h3 className="text-2xl font-black italic tracking-tighter">
+                  {transaction ? 'Edit Transaction' : 'New Transaction'}
+                </h3>
                 <button onClick={onClose} className="w-10 h-10 glass rounded-full flex items-center justify-center">
                   <X className="w-5 h-5" />
                 </button>
@@ -125,7 +147,7 @@ export default function TransactionModal({ isOpen, onClose }: TransactionModalPr
               </div>
 
               <Button onClick={handleSubmit} className="w-full py-5 text-lg" size="lg" isLoading={isSaving}>
-                Add Transaction
+                {transaction ? 'Update Transaction' : 'Add Transaction'}
               </Button>
             </div>
           </motion.div>
