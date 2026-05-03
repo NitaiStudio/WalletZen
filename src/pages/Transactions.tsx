@@ -33,52 +33,54 @@ function TransactionItem({ tx, currencySymbol, onDelete, onEdit }: TransactionIt
 
   return (
     <div className="relative group overflow-hidden rounded-3xl" ref={dragConstraintsRef}>
-      {/* Background Actions */}
-      <div className="absolute inset-0 flex justify-end items-center pr-4 gap-2">
+      {/* Background Action: Delete */}
+      <div className="absolute inset-y-0 right-0 p-1 flex justify-end items-center pr-2">
         <button
-          onClick={() => onEdit(tx)}
-          className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg active:scale-95 transition-transform"
+          onClick={(e) => {
+            e.stopPropagation();
+            tx.id && onDelete(tx.id);
+          }}
+          className="w-20 h-full bg-red-500/20 border border-red-500/30 rounded-2xl flex flex-col items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition-all duration-300"
         >
-          <Edit2 className="w-5 h-5" />
-        </button>
-        <button
-          onClick={() => tx.id && onDelete(tx.id)}
-          className="w-12 h-12 bg-red-500 rounded-2xl flex items-center justify-center text-white shadow-lg active:scale-95 transition-transform"
-        >
-          <Trash2 className="w-5 h-5" />
+          <Trash2 className="w-5 h-5 mb-1" />
+          <span className="text-[10px] font-black uppercase tracking-tighter">Delete</span>
         </button>
       </div>
 
       {/* Foreground Transaction Card */}
       <motion.div
         drag="x"
-        dragConstraints={{ right: 0, left: -140 }}
-        dragElastic={0.1}
+        dragConstraints={{ right: 0, left: -100 }}
+        dragElastic={0.05}
         style={{ x }}
         onDragEnd={handleDragEnd}
-        animate={{ x: isSwiped ? -140 : 0 }}
+        animate={{ x: isSwiped ? -100 : 0 }}
         transition={{ type: 'spring', damping: 25, stiffness: 400 }}
         className="relative z-10 cursor-grab active:cursor-grabbing"
+        onClick={() => !isSwiped && onEdit(tx)}
       >
-        <GlassCard className="p-4 rounded-3xl flex items-center justify-between pr-4 bg-background">
+        <GlassCard className="p-4 rounded-3xl flex items-center justify-between pr-4 bg-background border border-white/5 active:scale-[0.98] transition-transform">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 glass rounded-2xl flex items-center justify-center text-2xl">
+            <div className="w-12 h-12 glass rounded-2xl flex items-center justify-center text-2xl group-hover:scale-105 transition-transform">
               {tx.type === 'income' ? '💰' : '💸'}
             </div>
             <div>
-              <p className="font-bold text-sm tracking-tight">{tx.description}</p>
+              <p className="font-bold text-sm tracking-tight text-white/90">{tx.description}</p>
               <p className="text-[10px] uppercase font-bold text-text/30 tracking-widest leading-none mt-1">
                 {tx.category} • {new Date(tx.date).toLocaleDateString()}
               </p>
             </div>
           </div>
-          <div className="text-right">
-            <p className={cn(
-              "font-bold text-sm tabular-nums",
-              tx.type === 'income' ? "text-accent" : "text-text"
-            )}>
-              {tx.type === 'income' ? '+' : '-'}{currencySymbol}{Math.abs(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
+          <div className="text-right flex items-center gap-2">
+            <div className="text-right">
+              <p className={cn(
+                "font-bold text-sm tabular-nums",
+                tx.type === 'income' ? "text-accent" : "text-white"
+              )}>
+                {tx.type === 'income' ? '+' : '-'}{currencySymbol}{Math.abs(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+            </div>
+            <Edit2 className="w-3 h-3 text-white/10 group-hover:text-white/30 transition-colors" />
           </div>
         </GlassCard>
       </motion.div>
@@ -92,6 +94,7 @@ export default function Transactions() {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingTransaction, setEditingTransaction] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const transactions = useLiveQuery(
     () => {
@@ -107,7 +110,14 @@ export default function Transactions() {
   });
 
   const handleDelete = async (id: number) => {
-    await db.transactions.delete(id);
+    setDeletingId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (deletingId) {
+      await db.transactions.delete(deletingId);
+      setDeletingId(null);
+    }
   };
 
   const handleEdit = (tx: any) => {
@@ -211,6 +221,49 @@ export default function Transactions() {
           }}
           transaction={editingTransaction}
         />
+
+        {/* Delete Confirmation Modal */}
+        <AnimatePresence>
+          {deletingId && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setDeletingId(null)}
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="relative glass p-6 rounded-[2.5rem] w-full max-w-sm border border-white/10 shadow-2xl"
+              >
+                <div className="w-16 h-16 bg-red-500/20 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-red-500/20">
+                  <Trash2 className="w-8 h-8 text-red-500" />
+                </div>
+                <h3 className="text-xl font-black italic tracking-tighter text-center mb-2">Delete Transaction?</h3>
+                <p className="text-sm text-text/40 text-center mb-8 px-4">
+                  This action cannot be undone. Every cent counts in your journey!
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setDeletingId(null)}
+                    className="flex-1 py-4 glass rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-white/5 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmDelete}
+                    className="flex-1 py-4 bg-red-500 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-red-600 shadow-xl shadow-red-500/20 transition-all active:scale-95"
+                  >
+                    Delete Now
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     </MainLayout>
   );
